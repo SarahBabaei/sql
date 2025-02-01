@@ -54,7 +54,11 @@ The store wants to keep customer addresses. Propose two architectures for the CU
 **HINT:** search type 1 vs type 2 slowly changing dimensions. 
 
 ```
-Your answer...
+the type 1 table will overwrite changes. New addresses will replace old ones and there will not be information on past addresses. 
+For this table, the architecture could look like: customer_id, some columns to do with address, and a last_updated column.
+the type 2 table will retain changes. New addresses will not replace the old addresses and all this data is kept. 
+For this table, the architecture may look like: columns similar to type 1, except new rows are added for each new address. the primary key remains the same (in this case the customer_id)
+This table may also have an 'IsCurrent' column that takes a boolean data type.
 ```
 
 ***
@@ -182,5 +186,14 @@ Consider, for example, concepts of labour, bias, LLM proliferation, moderating c
 
 
 ```
-Your thoughts...
+I can think of many ethical issues important to this story, but I will focus on issues with learning models in relation to intellectual property and perpetuating stereotypes. 
+I am a heavily tattooed person. I have frequented tattoo shops since I was 18, and all my designs are unique (because most are scientific species illustrations). Back then, the ‘rules’ for tattoo designs were pretty simple: you can take inspiration from another artist's work and work it into your own design, in your own style, but you can’t request the same exact design that another artist drew. In fact, artists refused to do the piece if it was taken from another artists’ page without their permission. Because of this, some artists made money off of people that bought their designs and took them to another artist to get them actually tattooed. 
+More recently, I sat for a longer session where my artist was telling me about a request she got from a client to tattoo a piece that was ‘designed’ using an AI image generator. She said she had no idea what to say; these AI models were trained using other people’s art, so it was someone else’s intellectual property. But another way she could think of it is that this model just ‘took inspiration’ from other artists’ work, which according to the unwritten ‘rules’ of tattooing, was perfectly okay. AI has introduced an ethical-gray area to art, inside of which artists have no idea what to do with. 
+Apart from this making it more difficult for those that sell designs to keep their businesses running, this also has an ethical gray area within whose art is being used for training datasets. Do the artists whose work the image generator took ‘inspiration’ from know that their designs are being used this way? Would people be able to understand what it means for their art to be used for AI training? I believe this point was touched upon briefly in the article where she discusses where the images come from. 
+
+
+On to my second point, where AI can perpetuate stereotypes and biases. This comes with the ‘human’ aspects of training data. The author touches on this point in the article as well with the example of an image with someone with glasses being labeled a ‘nerd’, but I’d like to go further and discuss the societal implications of this. 
+As a young (and nerdy) girl, sometimes I’d search up cool outfits or hairstyles I could do, or even look at magazines to see what pretty people are supposed to look like. I’d imagine that kids these days would do the same, but through social media, where influencers are worshipped as the peak of human aesthetics. However, beauty is subjective, and this data is what is being used to train models. Searching an AI generated photo of a beautiful woman brings a skinny, white, blonde woman, who I’ll call Brittany. But why does Brittany show up even when my family in the middle east, none of whom look like Brittany, search up the same prompt? I believe this is because AI datasets are not only biased by human stereotypes, but even MORE so biased by opinions of those that train them. In this case, we get the opinions of predominantly straight, white, cis men. So what are the implications of this?
+I’d like to start by saying this point isn’t anything that the internet, or even society’s eurocentric beauty standards, weren’t already doing. The main issue I’m emphasizing here is the fact that it is making these stereotypes more accessible to people all around the world. With a simple search on chatgpt, a little girl in the middle east is told a beautiful woman is someone like Brittany. And nobody around that little girl looks like Brittany. At least if the little girl looked at a magazine or did a google search (based on her location this does change) she would have seen some people that looked more like her and the people around her (though still unrealistic). To put it simply, image generating AI models, and even non-image generating ones, are making unhealthy, unrealistic, eurocentric, misogynistic, etc biases more accessible all around the world, because of where the training data comes from.
+
 ```
