@@ -19,7 +19,9 @@ HINT: keep the syntax the same, but edited the correct components with the strin
 The `||` values concatenate the columns into strings. 
 Edit the appropriate columns -- you're making two edits -- and the NULL rows will be fixed. 
 All the other rows will remain the same.) */
-
+SELECT 
+product_name || ', ' || coalesce(product_size, ' ') || ' (' || coalesce(product_qty_type, 'unit') || ')'
+FROM product
 
 
 --Windowed Functions
@@ -32,17 +34,52 @@ each new market date for each customer, or select only the unique market dates p
 (without purchase details) and number those visits. 
 HINT: One of these approaches uses ROW_NUMBER() and one uses DENSE_RANK(). */
 
+--write only the unique visit dates with dense_rank:
+	SELECT DISTINCT
+	market_date,
+	customer_id
+	,dense_rank() OVER(PARTITION BY customer_id ORDER BY market_date ASC) as market_visit_number
+	FROM customer_purchases
 
+--write all table with ticker changing only when date changes per customer using dense_rank:
+	SELECT *
+	,dense_rank() OVER(PARTITION BY customer_id ORDER BY market_date ASC) as market_visit_number
+	FROM customer_purchases
+--write only unique visit dates per customer with row_number() table 
+SELECT 
+    customer_id,
+    market_date,
+    ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY market_date) AS market_visit_number
+FROM 
+    customer_purchases
+GROUP BY 
+    customer_id, market_date
+
+		--I can not figure out how to show the whole table with the ticker changing with row_number, I'm also not sure if the question really wants that. 
 
 /* 2. Reverse the numbering of the query from a part so each customer’s most recent visit is labeled 1, 
 then write another query that uses this one as a subquery (or temp table) and filters the results to 
 only the customer’s most recent visit. */
+SELECT *
+FROM (
 
+SELECT DISTINCT
+customer_id, market_date
+	,dense_rank() OVER(PARTITION BY customer_id ORDER BY market_date DESC) as market_visit_number
+
+FROM customer_purchases
+)x
+WHERE x.market_visit_number = 1;
 
 
 /* 3. Using a COUNT() window function, include a value along with each row of the 
 customer_purchases table that indicates how many different times that customer has purchased that product_id. */
-
+SELECT
+count(product_id) AS times_bought,
+product_id,
+customer_id
+FROM customer_purchases
+GROUP BY product_id, customer_id
 
 
 -- String manipulations
@@ -56,11 +93,22 @@ Remove any trailing or leading whitespaces. Don't just use a case statement for 
 | Habanero Peppers - Organic | Organic     |
 
 Hint: you might need to use INSTR(product_name,'-') to find the hyphens. INSTR will help split the column. */
-
+SELECT product_name,
+CASE when instr(product_name, '-') > 0
+then substr(product_name, instr(product_name, '-')+2)
+else null
+end as description
+FROM product
 
 
 /* 2. Filter the query to show any product_size value that contain a number with REGEXP. */
-
+SELECT product_name, product_size,
+CASE when instr(product_name, '-') > 0
+then substr(product_name, instr(product_name, '-')+2)
+else null
+end as description
+FROM product
+where product_size REGEXP '[0-9]'
 
 
 -- UNION
@@ -72,7 +120,32 @@ HINT: There are a possibly a few ways to do this query, but if you're struggling
 "best day" and "worst day"; 
 3) Query the second temp table twice, once for the best day, once for the worst day, 
 with a UNION binding them. */
+--part1
+DROP TABLE IF EXISTS grouped_values;
+CREATE temp TABLE grouped_values AS
+SELECT market_date,
+sum(quantity*cost_to_customer_per_qty) as profit
+from customer_purchases
+group by market_date
 
+--part2
+DROP TABLE if EXISTS ranked_values;
+create temp table ranked_values as
+select *,
+	dense_rank () OVER(ORDER BY profit ASC) as profit_worstday,
+	dense_rank () OVER(ORDER by profit desc) as profit_bestday
+from grouped_values
+
+--part3
+SELECT market_date, profit, 'Highest Earning Day' as profit_day
+FROM ranked_values
+WHERE profit_bestday = 1
+
+UNION
+
+SELECT market_date, profit, 'Lowest Earning Day' as profit_day
+from ranked_values
+where profit_worstday = 1;
 
 
 
@@ -88,7 +161,27 @@ Remember, CROSS JOIN will explode your table rows, so CROSS JOIN should likely b
 Think a bit about the row counts: how many distinct vendors, product names are there (x)?
 How many customers are there (y). 
 Before your final group by you should have the product of those two queries (x*y).  */
+DROP table if exists prod_vendor_price;
+create temp table prod_vendor_price as
+select distinct vendor_name, product_name, original_price*5 as cost_for_5
+from vendor_inventory
+INNER JOIN vendor
+	ON vendor_inventory.vendor_id = vendor.vendor_id
+INNER JOIN product
+	ON product.product_id = vendor_inventory.product_id
+INNER JOIN customer_purchases
+	on customer_purchases.product_id = vendor_inventory.product_id
+	
+Drop table if exists prod_vendor_customer;
+create temp table prod_vendor_customer as
+select DISTINCT vendor_name, product_name, cost_for_5, customer_id
+from prod_vendor_price
+CROSS JOIN customer
 
+select vendor_name, product_name,
+sum(cost_for_5) as totalsoldif5percustomer
+from prod_vendor_customer
+group by product_name
 
 
 -- INSERT
@@ -97,18 +190,25 @@ This table will contain only products where the `product_qty_type = 'unit'`.
 It should use all of the columns from the product table, as well as a new column for the `CURRENT_TIMESTAMP`.  
 Name the timestamp column `snapshot_timestamp`. */
 
+drop table if exists product_units;
+create TABLE product_units as
+SELECT *, CURRENT_TIMESTAMP as snapshot_timestamp
+from product
+where product_qty_type = 'unit';
 
 
 /*2. Using `INSERT`, add a new row to the product_units table (with an updated timestamp). 
 This can be any product you desire (e.g. add another record for Apple Pie). */
-
+INSERT INTO product_units
+VALUES (10, 'Eggs', '1 dozen', 6, 'unit', CURRENT_TIMESTAMP)
 
 
 -- DELETE
 /* 1. Delete the older record for the whatever product you added. 
 
 HINT: If you don't specify a WHERE clause, you are going to have a bad time.*/
-
+delete from product_units
+where product_id=10 and snapshot_timestamp = (SELECT min(snapshot_timestamp) from product_units)
 
 
 -- UPDATE
@@ -127,7 +227,16 @@ Third, SET current_quantity = (...your select statement...), remembering that WH
 Finally, make sure you have a WHERE statement to update the right row, 
 	you'll need to use product_units.product_id to refer to the correct row within the product_units table. 
 When you have all of these components, you can run the update statement. */
-
+--i'm still unsure about this one, its confusing. but it seems to work? the nested coalesce get confusing with all the brackets
+--ran this after the above ALTER TABLE lines were run
+UPDATE product_units
+set current_quantity = coalesce((
+SELECT coalesce(quantity, 0)
+from vendor_inventory as x
+where product_units.product_id = x.product_id AND x.market_date = (
+    SELECT max(market_date)
+    from vendor_inventory
+    where product_id = x.product_id)), 0)
 
 
 
